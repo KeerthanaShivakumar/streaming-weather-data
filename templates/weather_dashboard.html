@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Weather Streaming Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .weather-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            color: #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .weather-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .city-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .city-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .weather-icon {
+            font-size: 3rem;
+        }
+
+        .temperature {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #2a5298;
+            margin: 15px 0;
+        }
+
+        .weather-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-icon {
+            font-size: 1.5rem;
+        }
+
+        .detail-text {
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            font-weight: bold;
+            color: #2a5298;
+        }
+
+        .chart-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+        }
+
+        .error {
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .last-updated {
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .refresh-btn {
+            background: #ffd700;
+            color: #1e3c72;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .refresh-btn:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+
+        .city-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .city-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .city-btn:hover, .city-btn.active {
+            background: rgba(255, 215, 0, 0.3);
+            border-color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⛈️ Real-Time Weather Streaming Dashboard</h1>
+            <p class="subtitle">Powered by Kafka + Spark + PostgreSQL</p>
+            <button class="refresh-btn" onclick="loadAllData()">Refresh Data</button>
+        </header>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-label">Total Records</div>
+                <div class="stat-value" id="totalRecords">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Cities Monitored</div>
+                <div class="stat-value" id="citiesCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Records (Last Hour)</div>
+                <div class="stat-value" id="recentRecords">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Last Update</div>
+                <div class="stat-value" id="lastUpdate" style="font-size: 1.2rem;">-</div>
+            </div>
+        </div>
+
+        <div class="weather-grid" id="weatherGrid">
+            <div class="loading">Loading current weather data...</div>
+        </div>
+
+        <div class="city-selector" id="citySelector"></div>
+
+        <div class="chart-section">
+            <h2 class="chart-title">📈 Temperature Trends (24 Hours)</h2>
+            <div class="chart-container">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h2 class="chart-title">💧 Humidity & Wind Analysis</h2>
+            <div class="chart-container">
+                <canvas id="humidityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="last-updated" id="lastUpdatedTime"></div>
+    </div>
+
+    <script>
+        let temperatureChart = null;
+        let humidityChart = null;
+        let selectedCity = 'Geneva';
+
+        const weatherEmojis = {
+            'Clear': '☀️',
+            'Clouds': '☁️',
+            'Rain': '🌧️',
+            'Drizzle': '🌦️',
+            'Thunderstorm': '⛈️',
+            'Snow': '❄️',
+            'Mist': '🌫️',
+            'Fog': '🌫️',
+            'Haze': '🌫️'
+        };
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+
+                document.getElementById('totalRecords').textContent = 
+                    stats.total_records.toLocaleString();
+                document.getElementById('citiesCount').textContent = stats.cities_monitored;
+                document.getElementById('recentRecords').textContent = stats.records_last_hour;
+                
+                if (stats.latest_update) {
+                    const date = new Date(stats.latest_update);
+                    document.getElementById('lastUpdate').textContent = 
+                        date.toLocaleTimeString();
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadCurrentWeather() {
+            try {
+                const response = await fetch('/api/current');
+                const weatherData = await response.json();
+
+                const grid = document.getElementById('weatherGrid');
+                grid.innerHTML = '';
+
+                const citySelector = document.getElementById('citySelector');
+                citySelector.innerHTML = '';
+
+                weatherData.forEach(city => {
+                    // Create weather card
+                    const card = createWeatherCard(city);
+                    grid.appendChild(card);
+
+                    // Create city selector button
+                    const btn = document.createElement('button');
+                    btn.className = 'city-btn';
+                    btn.textContent = city.city;
+                    btn.onclick = () => selectCity(city.city);
+                    if (city.city === selectedCity) {
+                        btn.classList.add('active');
+                    }
+                    citySelector.appendChild(btn);
+                });
+
+                // Load chart for selected city
+                loadCityHistory(selectedCity);
+            } catch (error) {
+                console.error('Error loading weather:', error);
+                document.getElementById('weatherGrid').innerHTML = 
+                    '<div class="error">Error loading weather data. Please try again.</div>';
+            }
+        }
+
+        function createWeatherCard(city) {
+            const card = document.createElement('div');
+            card.className = 'weather-card';
+
+            const emoji = weatherEmojis[city.weather_condition] || '🌤️';
+
+            card.innerHTML = `
+                <div class="city-header">
+                    <div class="city-name">${city.city}</div>
+                    <div class="weather-icon">${emoji}</div>
+                </div>
+                <div class="temperature">${city.temperature.toFixed(1)}°C</div>
+                <div style="text-align: center; color: #666; margin-bottom: 20px;">
+                    ${city.weather_description}
+                </div>
+                <div class="weather-details">
+                    <div class="detail-item">
+                        <span class="detail-icon">🌡️</span>
+                        <div class="detail-text">
+                            Feels Like<br>
+                            <span class="detail-value">${city.feels_like.toFixed(1)}°C</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-icon">💧</span>
+                        <div class="detail-text">
+                            Humidity<br>
+                            <span class="detail-value">${city.humidity}%</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-icon">💨</span>
+                        <div class="detail-text">
+                            Wind Speed<br>
+                            <span class="detail-value">${city.wind_speed.toFixed(1)} m/s</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-icon">🔽</span>
+                        <div class="detail-text">
+                            Pressure<br>
+                            <span class="detail-value">${city.pressure} hPa</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function selectCity(city) {
+            selectedCity = city;
+            document.querySelectorAll('.city-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === city) {
+                    btn.classList.add('active');
+                }
+            });
+            loadCityHistory(city);
+        }
+
+        async function loadCityHistory(city) {
+            try {
+                const response = await fetch(`/api/history/${city}`);
+                const history = await response.json();
+
+                renderTemperatureChart(history, city);
+                renderHumidityChart(history, city);
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function renderTemperatureChart(data, city) {
+            const ctx = document.getElementById('temperatureChart');
+            
+            if (temperatureChart) {
+                temperatureChart.destroy();
+            }
+
+            const labels = data.map(d => {
+                const date = new Date(d.timestamp);
+                return date.toLocaleTimeString();
+            });
+
+            const temperatures = data.map(d => d.temperature);
+
+            temperatureChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${city} Temperature (°C)`,
+                        data: temperatures,
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: value => value + '°C'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHumidityChart(data, city) {
+            const ctx = document.getElementById('humidityChart');
+            
+            if (humidityChart) {
+                humidityChart.destroy();
+            }
+
+            const labels = data.map(d => {
+                const date = new Date(d.timestamp);
+                return date.toLocaleTimeString();
+            });
+
+            humidityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Humidity (%)',
+                            data: data.map(d => d.humidity),
+                            borderColor: '#4ecdc4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Wind Speed (m/s)',
+                            data: data.map(d => d.wind_speed),
+                            borderColor: '#95e1d3',
+                            backgroundColor: 'rgba(149, 225, 211, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: {
+                                callback: value => value + '%'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                callback: value => value + ' m/s'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTimestamp() {
+            const now = new Date().toLocaleString();
+            document.getElementById('lastUpdatedTime').textContent = 
+                `Last updated: ${now}`;
+        }
+
+        async function loadAllData() {
+            await loadStats();
+            await loadCurrentWeather();
+            updateTimestamp();
+        }
+
+        // Initial load
+        loadAllData();
+
+        // Auto-refresh every 60 seconds
+        setInterval(loadAllData, 60000);
+    </script>
+</body>
+</html>

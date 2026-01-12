@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install small system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install only the packages needed for the producer to keep image small
+COPY requirements-producer.txt .
+RUN pip install --no-cache-dir -r requirements-producer.txt
+
+# Copy producer code and env (env file is optional at build-time)
+COPY producer.py /app/producer.py
+COPY .env /app/.env
+
+CMD ["python", "producer.py"]

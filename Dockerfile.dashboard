@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install only the packages needed for the dashboard
+COPY requirements-dashboard.txt .
+RUN pip install --no-cache-dir -r requirements-dashboard.txt
+
+# Copy application files
+COPY dashboard.py /app/dashboard.py
+COPY templates /app/templates
+COPY .env /app/.env
+
+EXPOSE 8000
+CMD ["python", "dashboard.py"]
