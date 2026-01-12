@@ -1,0 +1,27 @@
+# Create or update .gitignore
+cat >> .gitignore << EOF
+# Environment variables - NEVER COMMIT
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Spark
+/tmp/spark-checkpoint/
+
+# Logs
+*.log
+EOF.env
+.env
